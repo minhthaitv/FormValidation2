@@ -1,4 +1,12 @@
 function Validator(formselector) {
+    var _this = this;
+
+    var formRules = {}
+    //Mong muon nhu nay
+    // var formRules = {
+    //     fullName: 'required',
+    //     email: 'required|email',
+    // }
 
     function getParent(element, selector) {
         while (element.parentElement) {
@@ -9,12 +17,7 @@ function Validator(formselector) {
         }
     }
 
-    var formRules = {}
-    //Mong muon nhu nay
-    // var formRules = {
-    //     fullName: 'required',
-    //     email: 'required|email',
-    // }
+    
 
 
     /**
@@ -94,12 +97,12 @@ function Validator(formselector) {
             var rules = formRules[event.target.name]
             var errorMessage
 
-            rules.find(
-                function (rule) {
-                    errorMessage = rule(event.target.value)
-                    return errorMessage
+            for (var rule of rules) {
+                errorMessage = rule(event.target.value)
+                if(errorMessage){
+                    break
                 }
-            )
+            }
 
             //Neu co loi thi hien thi message loi ra UI
             if (errorMessage) {
@@ -115,6 +118,8 @@ function Validator(formselector) {
                 }
 
             }
+
+            return !errorMessage
         }
 
         //Ham clear message loi khi nguoi dung dang nhap
@@ -130,18 +135,68 @@ function Validator(formselector) {
             }
         }
 
+
+
         //Xu li hanh vi submit form
         formElement.onsubmit = function (event) {
             event.preventDefault()
 
+            console.log(_this)
+
             var inputs = formElement.querySelectorAll("[name][rules]")
-            
+            var isValid = true
+
             for (var input of inputs) {
-                handleValidate({
-                    target: input
-                })
+                // gia lap event handleValidate(event)
+                if (!handleValidate({ target: input })) {
+                    isValid = false
+
+                }
             }
 
+            //Khi khong co loi thi submit form
+            if (isValid) {
+
+                if (typeof _this.onSubmit === 'function') {
+                    
+                    var enableInputs = 
+                    formElement.querySelectorAll('[name]:not([disabled])') 
+                    //Note khuc nay
+                    var formValue  = Array.from(enableInputs).reduce(
+                        (values,input)=>{
+                            
+                            switch(input.type){
+                                case 'radio':
+                                    values[input.name] = formElement.querySelector('input[name="'+input.name+'"]:checked').value
+                                    break;
+                                case 'checkbox':
+                                    if(!input.matches(':checked')) {
+                                        values[input.name] = ''
+                                        return values
+                                    }
+                                    if(!Array.isArray(values[input.name])){
+                                        values[input.name] = []
+                                    }
+                                    values[input.name].push(input.value)
+                                    break;
+                                case 'file':
+                                    values[input.name] = input.files
+                                    break;
+                                default:
+                                    values[input.name] = input.value
+                            }
+
+                            return values
+                        },{}
+                    )
+                    
+                    //Goi lai ham onSubmit va tra ve gia tri cua cac the input
+                    _this.onSubmit(formValue)
+                } else {
+                    console.log("nhay vao day")
+                    formElement.submit()
+                }
+            }
         }
     }
 }
